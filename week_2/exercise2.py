@@ -21,3 +21,12 @@ X = np.vstack((x1, x2)).T
 # Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
+BaggingRegressor = BaggingRegressor(estimator=DecisionTreeRegressor(max_depth=5), n_estimators=50, random_state=42)
+BaggingRegressor.fit(X_train, y_train)
+y_pred = BaggingRegressor.predict(X_test)
+r2 = r2_score(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+print(f'R2 Score: {r2}')
+print(f'Mean Squared Error: {mse}')
+
+

@@ -20,4 +20,10 @@ X = np.vstack((x1, x2)).T
 # Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
+Random_Forest = RandomForestRegressor(n_estimators=50, random_state=42)
+Random_Forest.fit(X_train, y_train)
+y_pred = Random_Forest.predict(X_test)
+r2 = r2_score(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+print(f'R2 Score: {r2}', f'Mean Squared Error: {mse}')
 
