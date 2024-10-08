@@ -2,6 +2,7 @@ import numpy as np
 import time
 import os
 import matplotlib.pyplot as plt
+#import sklearn
 from simulation_and_control import pb, MotorCommands, PinWrapper, feedback_lin_ctrl, SinusoidalReference 
 
 def main():
@@ -38,7 +39,7 @@ def main():
     # Simulation parameters
     time_step = sim.GetTimeStep()
     current_time = 0
-    max_time = 10  # seconds
+    max_time = 1  # seconds
     
     # Command and control loop
     cmd = MotorCommands()  # Initialize command structure for motors
@@ -65,7 +66,7 @@ def main():
         sim.Step(cmd, "torque")
 
         # Get measured torque
-        tau_mes = sim.GetMotorTorques(0)
+        tau_mes = sim.GetMotorTorques(0) #u(t) list of all the torques
 
         if dyn_model.visualizer: 
             for index in range(len(sim.bot)):  # Conditionally display the robot model
@@ -80,20 +81,32 @@ def main():
 
         
         # TODO Compute regressor and store it
-        
-        
+        cur_reg = dyn_model.ComputeDynamicRegressor(q_mes, qd_mes, qdd_mes) #Y(t) list of all the accelerations, velocitys, distances
+        regressor_all.append(cur_reg) 
+        tau_mes_all.append(tau_mes)
+
         current_time += time_step
         # Optional: print current time
         print(f"Current time in seconds: {current_time:.2f}")
 
     # TODO After data collection, stack all the regressor and all the torquen and compute the parameters 'a'  using pseudoinverse
-  
+    Y_mat = np.vstack(regressor_all)
+    U_mat = np.hstack(tau_mes_all)
+    print("yhat shape = ", Y_mat.shape) #should be (70000, 70)
+    print("uhat shape = ", U_mat.shape) #should be (70000, 1)
+
+    a = np.matmul(np.linalg.pinv(Y_mat), U_mat)
+    print(a.shape) 
     
     # TODO compute the metrics for the linear model
-    
-   
+    U_hat = np.matmul(Y_mat, a) #predicted values for u(t) 
+
     # TODO plot the  torque prediction error for each joint (optional)
-    
+    #Calculate rss, tss, r2, adjusted r2, f_statistic
+
+
+
 
 if __name__ == '__main__':
     main()
+
