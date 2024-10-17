@@ -21,3 +21,11 @@ X = np.vstack((x1, x2)).T
 # Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
+AdaBoost = AdaBoostRegressor(estimator=DecisionTreeRegressor(max_depth=4), n_estimators=50, random_state=42, loss='linear')
+AdaBoost.fit(X_train, y_train)
+y_pred = AdaBoost.predict(X_test)
+r2 = r2_score(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+print(f'R2 Score: {r2}')
+print(f'Mean Squared Error: {mse}')
+

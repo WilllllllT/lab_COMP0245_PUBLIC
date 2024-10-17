@@ -14,7 +14,7 @@ from gp_functions import fit_gp_model_1d, plot_gp_results_1d
 # Configuration for the simulation
 conf_file_name = "pandaconfig.json"  # Configuration file for the robot
 cur_dir = os.path.dirname(os.path.abspath(__file__))
-sim = pb.SimInterface(conf_file_name, conf_file_path_ext = cur_dir)  # Initialize simulation interface
+sim = pb.SimInterface(conf_file_name, conf_file_path_ext = cur_dir, use_gui=False)  # Initialize simulation interface
 
 # Get active joint names from the simulation
 ext_names = sim.getNameActiveJoints()
@@ -27,6 +27,8 @@ dyn_model = PinWrapper(conf_file_name, "pybullet", ext_names, source_names, Fals
 num_joints = dyn_model.getNumberofActuatedJoints()
 
 init_joint_angles = sim.GetInitMotorAngles()
+
+acq_func = 'LCB' # Acquisition function for Bayesian optimization
 
 print(f"Initial joint angles: {init_joint_angles}")
 
@@ -116,20 +118,33 @@ def objective(params):
     episode_duration = 10
     
     # TODO Call the simulation with given kp and kd values
+    tracking_error = simulate_with_given_pid_values(sim, kp, kd, episode_duration)
 
-    # TODO Collect data for the first kp and kd  
+    # TODO Collect data for the first kp and kd 
+    kp0_values.append(kp[0])
+    kd0_values.append(kd[0])
+    tracking_errors.append(tracking_error)
     
     
     return tracking_error
+
+def plot_tracking_error(tracking_errors):
+    plt.figure(figsize=(10, 8))
+    plt.plot(tracking_errors)
+    plt.xlabel("Iteration")
+    plt.ylabel("Tracking error")
+    plt.title("Tracking error vs. Iteration")
+    plt.show()
+
 
 
 def main():
     # Define the search space for Kp and Kd
    # Define the search space as before
     space = [
-        Real(0.1, 1000, name=f'kp{i}') for i in range(7)
+        Real(0.1, 100, name=f'kp{i}') for i in range(7)
     ] + [
-        Real(0.0, 100, name=f'kd{i}') for i in range(7)
+        Real(0.0, 20, name=f'kd{i}') for i in range(7)
     ]
 
     rbf_kernel = RBF(
@@ -149,12 +164,13 @@ def main():
     space,
     n_calls=10,
     base_estimator=gp,  # Use the custom Gaussian Process Regressor
-    acq_func='EI',      # TODO change this LCB': Lower Confidence Bound 'EI': Expected Improvement 'PI': Probability of Improvement
+    acq_func=acq_func,      # TODO change this LCB': Lower Confidence Bound 'EI': Expected Improvement 'PI': Probability of Improvement
     random_state=42)
     
     # Extract the optimal values
     best_kp = result.x[:7]  # Optimal kp vector
     best_kd = result.x[7:]  # Optimal kd vector
+    best_tracking_error = result.fun  # Best tracking error
 
     # Prepare data
     kp0_values_array = np.array(kp0_values).reshape(-1, 1)
@@ -166,10 +182,16 @@ def main():
     gp_kd0 = fit_gp_model_1d(kd0_values_array, tracking_errors_array)
 
     # Plot the results
+    plot_tracking_error(tracking_errors)
     plot_gp_results_1d(kp0_values_array, kd0_values_array, tracking_errors_array, gp_kp0, gp_kd0)
 
 
-    print(f"Optimal Kp: {best_kp}, Optimal Kd: {best_kd}")
+    print(f"Optimal Kp: {best_kp}\n Optimal Kd: {best_kd}\n Tracking error: {best_tracking_error}")
+
+    # write the best values of Kp and Kd and Tracking error to a file
+    with open("best_pid_values.txt", "w") as f:
+        f.write(f"Acq_func: {acq_func} \nOptimal Kp: {best_kp}\n Optimal Kd: {best_kd}\n Tracking error: {best_tracking_error}")
+    
 
 if __name__ == "__main__":
     main()

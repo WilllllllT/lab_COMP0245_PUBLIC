@@ -27,3 +27,17 @@ r2 = r2_score(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
 print(f'R2 Score: {r2}', f'Mean Squared Error: {mse}')
 
+#plot results
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(X_test[:, 0], X_test[:, 1], y_test, color='blue', label='True')
+ax.scatter(X_test[:, 0], X_test[:, 1], y_pred, color='red', label='Predicted')
+
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+ax.set_zlabel('Y')
+
+plt.legend()
+plt.show()
+
