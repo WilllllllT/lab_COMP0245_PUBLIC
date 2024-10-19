@@ -167,7 +167,7 @@ def main():
     #start the times
     start = time.time()
 
-    shape = (2, 10)
+    shape = (10, 150)
 
 
 

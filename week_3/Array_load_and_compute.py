@@ -12,7 +12,7 @@ def plot_tracking_error(tracking_errors_array):
     size = tracking_errors_array.shape[0]
     # plot the tracking errors over the top of each other
     for i in range(size):
-        plt.plot(tracking_errors_array[i], label='Iteration '+str(i+1))
+        plt.plot(tracking_errors_array[i], label='Iteration '+str(i))
     plt.xlabel('Iteration')
     plt.ylabel('Tracking Error')
     plt.legend()
