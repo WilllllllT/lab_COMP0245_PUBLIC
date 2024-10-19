@@ -30,11 +30,11 @@ def fit_gp_model_1d(X_values, y_values):
     return gp
 
 def create_prediction_range_kp0():
-    kp0_range = np.linspace(0.1, 1000, 200).reshape(-1, 1)
+    kp0_range = np.linspace(0.1, 1000, 100).reshape(-1, 1)
     return kp0_range
 
 def create_prediction_range_kd0():
-    kd0_range = np.linspace(0.0, 100, 200).reshape(-1, 1)
+    kd0_range = np.linspace(0.0, 200, 20).reshape(-1, 1)
     return kd0_range
 
 def plot_gp_results_1d(kp0_values, kd0_values, tracking_errors, gp_kp0, gp_kd0):
@@ -50,7 +50,7 @@ def plot_gp_results_1d(kp0_values, kd0_values, tracking_errors, gp_kp0, gp_kd0):
     
 
     # Plotting
-    plt.figure(figsize=(14, 6))
+    plt.figure(figsize=(14, 6)) 
     plt.subplot(1, 2, 1)
     plt.plot(kp0_pred, y_mean_kp0, 'k-', lw=1.5, zorder=9, label='Mean prediction')
     plt.fill_between(kp0_pred.ravel(), y_mean_kp0 - 1.96 * y_std_kp0, y_mean_kp0 + 1.96 * y_std_kp0,
@@ -58,8 +58,8 @@ def plot_gp_results_1d(kp0_values, kd0_values, tracking_errors, gp_kp0, gp_kd0):
     #plt.scatter(X, y, c='blue', s=50, zorder=10, edgecolors=(0, 0, 0), label='Observations')
     #plt.plot(X_pred, np.sin(X_pred), 'r:', lw=1.5, label='True function')
     plt.title("Gaussian process regression on noise-free dataset")
-    plt.xlabel('X')
-    plt.ylabel('f(X)')
+    plt.xlabel('Kp0_pred')
+    plt.ylabel('f(X) - y_mean_kp0')
     plt.legend(loc='upper left')
     #plt.show()
 
@@ -86,14 +86,14 @@ def plot_gp_results_1d(kp0_values, kd0_values, tracking_errors, gp_kp0, gp_kd0):
     
     # Plot for kd0
     plt.subplot(1, 2, 2)
-    plt.plot(kd0_pred, y_mean_kd0, 'k-', lw=1.5, zorder=9, label='Mean prediction')
+    plt.plot(kd0_pred, y_mean_kd0, 'k-', lw=1.5, zorder=9, label='Mean prediction') 
     plt.fill_between(kd0_pred.ravel(), y_mean_kd0 - 1.96 * y_std_kd0, y_mean_kd0 + 1.96 * y_std_kd0,
                     alpha=0.5, fc='orange', ec='None', label='95% confidence interval')
     #plt.scatter(X, y, c='blue', s=50, zorder=10, edgecolors=(0, 0, 0), label='Observations')
     #plt.plot(X_pred, np.sin(X_pred), 'r:', lw=1.5, label='True function')
     plt.title("Gaussian process regression on noise-free dataset")
-    plt.xlabel('X')
-    plt.ylabel('f(X)')
+    plt.xlabel('Kd0_pred')
+    plt.ylabel('f(X) - y_mean_kd0')
     plt.legend(loc='upper left')
 
 

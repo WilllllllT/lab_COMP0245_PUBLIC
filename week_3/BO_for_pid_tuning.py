@@ -9,6 +9,7 @@ from skopt.space import Real
 from skopt.learning import GaussianProcessRegressor
 from skopt.learning.gaussian_process.kernels import RBF
 from gp_functions import fit_gp_model_1d, plot_gp_results_1d
+import time
 
 
 # Configuration for the simulation
@@ -47,7 +48,11 @@ ref = SinusoidalReference(amplitude, frequency, sim.GetInitMotorAngles())  # Ini
 # Global lists to store data
 kp0_values = []
 kd0_values = []
+kp_all = []
+kd_all = []
 tracking_errors = []
+optimal_result = []
+tracking_errors_array = []
 
 def simulate_with_given_pid_values(sim_, kp, kd, episode_duration=10):
     
@@ -119,11 +124,16 @@ def objective(params):
     
     # TODO Call the simulation with given kp and kd values
     tracking_error = simulate_with_given_pid_values(sim, kp, kd, episode_duration)
+    tracking_errors.append(tracking_error)
 
-    # TODO Collect data for the first kp and kd 
+
+
+    # TODO Collect data for the first kp and kd  
     kp0_values.append(kp[0])
     kd0_values.append(kd[0])
-    tracking_errors.append(tracking_error)
+
+    kp_all.append(kp)
+    kd_all.append(kd)
     
     
     return tracking_error
@@ -142,9 +152,9 @@ def main():
     # Define the search space for Kp and Kd
    # Define the search space as before
     space = [
-        Real(0.1, 100, name=f'kp{i}') for i in range(7)
+        Real(0.1, 1000, name=f'kp{i}') for i in range(7)
     ] + [
-        Real(0.0, 20, name=f'kd{i}') for i in range(7)
+        Real(0.0, 200, name=f'kd{i}') for i in range(7)
     ]
 
     rbf_kernel = RBF(
@@ -152,30 +162,73 @@ def main():
     length_scale_bounds=(1e-2, 1e2)  # Bounds for length scale
     )
 
+
     gp = GaussianProcessRegressor(
     kernel=rbf_kernel,
     normalize_y=True,
     n_restarts_optimizer=10  # Optional for better hyperparameter optimization
     )
 
-    # Perform Bayesian optimization
-    result = gp_minimize(
-    objective,
-    space,
-    n_calls=10,
-    base_estimator=gp,  # Use the custom Gaussian Process Regressor
-    acq_func=acq_func,      # TODO change this LCB': Lower Confidence Bound 'EI': Expected Improvement 'PI': Probability of Improvement
-    random_state=42)
-    
-    # Extract the optimal values
-    best_kp = result.x[:7]  # Optimal kp vector
-    best_kd = result.x[7:]  # Optimal kd vector
-    best_tracking_error = result.fun  # Best tracking error
+    #create np arrays to store the data
+    optimal_result_array = []
+    all_tracking_errors_array = []
+
+    acq_func = 'EI'
+
+    #start the times
+    start = time.time()
+
+    shape = (10, 150)
+
+
+
+    for i in range(shape[0]):    
+        # Perform Bayesian optimization
+        result = gp_minimize(
+        objective,
+        space,
+        n_calls=shape[1],  # Number of iterations
+        base_estimator=gp,  # Use the custom Gaussian Process Regressor
+        acq_func=acq_func,      # TODO change this LCB': Lower Confidence Bound 'EI': Expected Improvement 'PI': Probability of Improvement
+        random_state=10+i)
+
+        
+        # Extract the optimal values and reshape the array to add them to the next iteraion
+        optimal_result = np.concatenate((result.x, [result.fun]))
+
+        # concatinate all data to a large array and save the file
+        #data = np.concatenate((kp_all_array, kd_all_array, tracking_errors_array.reshape(-1, 1)), axis=1)
+
+        # add the optimal result to the optimal result array
+        optimal_result_array.append(optimal_result)
+
+    #convert the arrays to np arrays
+    optimal_result_array = np.array(optimal_result_array)
+    all_tracking_errors_array = np.array(tracking_errors).reshape(shape)
+
+    np.save(f"optimal_result_array{acq_func}.npy", optimal_result_array)
+    np.save(f"all_tracking_errors_array{acq_func}.npy", all_tracking_errors_array)
+
+    # print time
+    print("Time: ", time.time()-start)
+
+    print(optimal_result_array.shape)
+    print(all_tracking_errors_array.shape)
+    print(optimal_result_array)
+    print(all_tracking_errors_array)
+
+
+    #VALERIOS CODE#
 
     # Prepare data
     kp0_values_array = np.array(kp0_values).reshape(-1, 1)
     kd0_values_array = np.array(kd0_values).reshape(-1, 1)
-    tracking_errors_array = np.array(tracking_errors)
+    
+    
+
+    print(optimal_result.shape)
+    print(tracking_errors_array.shape)
+
 
     # Fit GP models
     gp_kp0 = fit_gp_model_1d(kp0_values_array, tracking_errors_array)
@@ -186,12 +239,7 @@ def main():
     plot_gp_results_1d(kp0_values_array, kd0_values_array, tracking_errors_array, gp_kp0, gp_kd0)
 
 
-    print(f"Optimal Kp: {best_kp}\n Optimal Kd: {best_kd}\n Tracking error: {best_tracking_error}")
-
-    # write the best values of Kp and Kd and Tracking error to a file
-    with open("best_pid_values.txt", "w") as f:
-        f.write(f"Acq_func: {acq_func} \nOptimal Kp: {best_kp}\n Optimal Kd: {best_kd}\n Tracking error: {best_tracking_error}")
-    
+    print(f"Optimal Kp: {optimal_result[0]} \tOptimal Kd: {optimal_result[7]} \tOptimal tracking error: {optimal_result[-1]}")
 
 if __name__ == "__main__":
     main()
