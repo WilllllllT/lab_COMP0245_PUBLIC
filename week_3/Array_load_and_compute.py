@@ -4,8 +4,12 @@ from matplotlib import pyplot as plt
 
 
 # Load the data from the file
-optimal_result_array = np.load("optimal_result_arrayLCB.npy")
-all_tracking_errors_array = np.load("all_tracking_errors_arrayLCB.npy")
+optimal_result_arrayPI = np.load("RoboEnv\lab_COMP0245_PUBLIC\optimal_result_arrayPI.npy")
+all_tracking_errors_arrayPI = np.load("RoboEnv\lab_COMP0245_PUBLIC\l_tracking_errors_arrayPI.npy")
+optimal_result_arrayEI = np.load("RoboEnv\lab_COMP0245_PUBLIC\optimal_result_arrayEI.npy")
+all_tracking_errors_arrayEI = np.load("RoboEnv\lab_COMP0245_PUBLIC\l_tracking_errors_arrayEI.npy")
+optimal_result_arrayLCB = np.load("RoboEnv\lab_COMP0245_PUBLIC\optimal_result_arrayEI.npy")
+all_tracking_errors_arrayLCB = np.load("RoboEnv\lab_COMP0245_PUBLIC\l_tracking_errors_arrayEI.npy")
 
 def plot_tracking_error(tracking_errors_array):
 
@@ -58,10 +62,42 @@ def plot_optimal_results(optimal_kp, optimal_kd, optimal_tracking_error, average
     plt.legend()
     plt.show()
 
+def convergence_index(tracking_errors):
+    # print the the point where the tracking value reached a certain threshold (convergence_limit) for more than 3 consecutive tracking errors in each of the itereations
+    convergence_limit = 250
+    for i in range(tracking_errors.shape[0]):
+        count = 0
+        for j in range(tracking_errors.shape[1]):
+            if tracking_errors[i, j] < convergence_limit:
+                count += 1
+            else:
+                count = 0
+            if count == 5:
+                print('Convergence index for iteration '+str(i)+': '+str(j-2))
+                break
+
+def plot_best_tracking_error(PI, EI, LCB):
+    # plot the best tracking error 1 out of 10 for each of the acquisition functions
+    plt.plot(PI, label='PI')
+    plt.plot(EI, label='EI')
+    #plt.plot(LCB, label='LCB')
+    plt.xlabel('Iteration')
+    plt.ylabel('Tracking Error')
+    plt.legend()
+    plt.show()
+
+
 def main():
-    plot_tracking_error(all_tracking_errors_array)
-    best_result, optimal_kp, optimal_kd, optimal_tracking_error, average_tracking_error = find_optimal_results(optimal_result_array)
-    plot_optimal_results(optimal_kp, optimal_kd, optimal_tracking_error, average_tracking_error)
+    # plot the tracking errors for each of the acquisition functions
+    best_resultPI, optimal_kpPI, optimal_kdPI, optimal_tracking_errorPI, average_tracking_errorPI = find_optimal_results(optimal_result_arrayPI)
+    best_resultEI, optimal_kpEI, optimal_kdEI, optimal_tracking_errorEI, average_tracking_errorEI = find_optimal_results(optimal_result_arrayEI)
+    best_resultLCB, optimal_kpLCB, optimal_kdLCB, optimal_tracking_errorLCB, average_tracking_errorLCB = find_optimal_results(optimal_result_arrayLCB)
+
+    plot_best_tracking_error(optimal_tracking_errorPI, optimal_tracking_errorEI, optimal_tracking_errorLCB)
+
+
+    plot_tracking_error(all_tracking_errors_arrayEI)
+    convergence_index(all_tracking_errors_arrayPI)
 
 
 if __name__ == "__main__":
