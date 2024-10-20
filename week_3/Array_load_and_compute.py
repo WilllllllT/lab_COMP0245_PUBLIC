@@ -4,13 +4,13 @@ from matplotlib import pyplot as plt
 
 print(os.path.abspath("."))
 # Load the data from the files
-optimal_result_arrayPI = np.load('optimal_result_arrayPI.npy')
+optimal_result_arrayPI = np.load('optimal_result_arrayPI.npy', allow_pickle=True)
 optimal_result_arrayEI = np.load('optimal_result_arrayEI.npy')
 optimal_result_arrayLCB = np.load('optimal_result_arrayLCB.npy')
 
-all_tracking_errors_arrayPI = np.load('all_tracking_errors_arrayPI.npy')
-all_tracking_errors_arrayEI = np.load('all_tracking_errors_arrayEI.npy')
-all_tracking_errors_arrayLCB = np.load('all_tracking_errors_arrayLCB.npy')
+all_tracking_errors_arrayPI = np.load('l_tracking_errors_arrayPI.npy')
+all_tracking_errors_arrayEI = np.load('l_tracking_errors_arrayEI.npy')
+all_tracking_errors_arrayLCB = np.load('l_tracking_errors_arrayLCB.npy')
 
 
 
@@ -81,9 +81,9 @@ def convergence_index(tracking_errors):
 
 def plot_best_tracking_error(EI, PI, LCB):
     # plot the best tracking error 1 out of 10 for each of the acquisition functions
-    plt.plot(PI, label='PI')
-    plt.plot(EI, label='EI')
-    plt.plot(LCB, label='LCB')
+    plt.plot(np.log(PI), label='PI')
+    plt.plot(np.log(EI), label='EI')
+    plt.plot(np.log(LCB), label='LCB')
     plt.xlabel('Iteration')
     plt.ylabel('Tracking Error')
     plt.legend()
