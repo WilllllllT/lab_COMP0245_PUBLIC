@@ -4,8 +4,8 @@ from matplotlib import pyplot as plt
 
 
 # Load the data from the file
-optimal_result_array = np.load("optimal_result_arrayEI.npy")
-all_tracking_errors_array = np.load("all_tracking_errors_arrayEI.npy")
+optimal_result_array = np.load("optimal_result_arrayLCB.npy")
+all_tracking_errors_array = np.load("all_tracking_errors_arrayLCB.npy")
 
 def plot_tracking_error(tracking_errors_array):
 
