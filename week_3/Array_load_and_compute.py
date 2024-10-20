@@ -2,14 +2,16 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 
+print(os.path.abspath("."))
+# Load the data from the files
+optimal_result_arrayPI = np.load('optimal_result_arrayPI.npy')
+optimal_result_arrayEI = np.load('optimal_result_arrayEI.npy')
+optimal_result_arrayLCB = np.load('optimal_result_arrayLCB.npy')
 
-# Load the data from the file
-optimal_result_arrayPI = np.load("optimal_result_arrayPI.npy")
-all_tracking_errors_arrayPI = np.load("RoboEnv\lab_COMP0245_PUBLIC\l_tracking_errors_arrayPI.npy")
-optimal_result_arrayEI = np.load("Users\will\Ros2\RoboEnv\lab_COMP0245_PUBLIC\optimal_result_arrayEI.npy")
-all_tracking_errors_arrayEI = np.load("RoboEnv\lab_COMP0245_PUBLIC\l_tracking_errors_arrayEI.npy")
-optimal_result_arrayLCB = np.load("Users\will\Ros2\RoboEnv\lab_COMP0245_PUBLIC\optimal_result_arrayEI.npy")
-all_tracking_errors_arrayLCB = np.load("Users\will\Ros2\RoboEnv\lab_COMP0245_PUBLIC\l_tracking_errors_arrayEI.npy")
+all_tracking_errors_arrayPI = np.load('all_tracking_errors_arrayPI.npy')
+all_tracking_errors_arrayEI = np.load('all_tracking_errors_arrayEI.npy')
+all_tracking_errors_arrayLCB = np.load('all_tracking_errors_arrayLCB.npy')
+
 
 
 def plot_tracking_error(tracking_errors_array):
