@@ -4,8 +4,8 @@ from matplotlib import pyplot as plt
 
 
 # Load the data from the file
-optimal_result_array = np.load("optimal_result_arrayEI.npy")
-all_tracking_errors_array = np.load("all_tracking_errors_arrayEI.npy")
+optimal_result_array = np.load("lab_COMP0245_PUBLIC/optimal_result_arrayEI.npy")
+all_tracking_errors_array = np.load("lab_COMP0245_PUBLIC/all_tracking_errors_arrayEI.npy")
 
 def plot_tracking_error(tracking_errors_array):
 
@@ -58,10 +58,27 @@ def plot_optimal_results(optimal_kp, optimal_kd, optimal_tracking_error, average
     plt.legend()
     plt.show()
 
+def convergence_index(tracking_errors):
+    # print the the point where the tracking value reached a certain threshold (convergence_limit) for more than 3 consecutive tracking errors in each of the itereations
+    convergence_limit = 250
+    for i in range(tracking_errors.shape[0]):
+        count = 0
+        for j in range(tracking_errors.shape[1]):
+            if tracking_errors[i, j] < convergence_limit:
+                count += 1
+            else:
+                count = 0
+            if count == 5:
+                print('Convergence index for iteration '+str(i)+': '+str(j-2))
+                break
+
+
 def main():
     plot_tracking_error(all_tracking_errors_array)
     best_result, optimal_kp, optimal_kd, optimal_tracking_error, average_tracking_error = find_optimal_results(optimal_result_array)
     plot_optimal_results(optimal_kp, optimal_kd, optimal_tracking_error, average_tracking_error)
+    convergence_index(all_tracking_errors_array)
+    print(best_result)
 
 
 if __name__ == "__main__":
