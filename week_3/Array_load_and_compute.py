@@ -2,10 +2,17 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 
+print(os.path.abspath("."))
+# Load the data from the files
+optimal_result_arrayPI = np.load('optimal_result_arrayPI.npy', allow_pickle=True)
+optimal_result_arrayEI = np.load('optimal_result_arrayEI.npy')
+optimal_result_arrayLCB = np.load('optimal_result_arrayLCB.npy')
 
-# Load the data from the file
-optimal_result_array = np.load("lab_COMP0245_PUBLIC/optimal_result_arrayEI.npy")
-all_tracking_errors_array = np.load("lab_COMP0245_PUBLIC/all_tracking_errors_arrayEI.npy")
+all_tracking_errors_arrayPI = np.load('l_tracking_errors_arrayPI.npy')
+all_tracking_errors_arrayEI = np.load('l_tracking_errors_arrayEI.npy')
+all_tracking_errors_arrayLCB = np.load('l_tracking_errors_arrayLCB.npy')
+
+
 
 def plot_tracking_error(tracking_errors_array):
 
@@ -72,13 +79,28 @@ def convergence_index(tracking_errors):
                 print('Convergence index for iteration '+str(i)+': '+str(j-2))
                 break
 
+def plot_best_tracking_error(EI, PI, LCB):
+    # plot the best tracking error 1 out of 10 for each of the acquisition functions
+    plt.plot(np.log(PI), label='PI')
+    plt.plot(np.log(EI), label='EI')
+    plt.plot(np.log(LCB), label='LCB')
+    plt.xlabel('Iteration')
+    plt.ylabel('Tracking Error')
+    plt.legend()
+    plt.show()
+
 
 def main():
-    plot_tracking_error(all_tracking_errors_array)
-    best_result, optimal_kp, optimal_kd, optimal_tracking_error, average_tracking_error = find_optimal_results(optimal_result_array)
-    plot_optimal_results(optimal_kp, optimal_kd, optimal_tracking_error, average_tracking_error)
-    convergence_index(all_tracking_errors_array)
-    print(best_result)
+    # plot the tracking errors for each of the acquisition functions
+    best_resultPI, optimal_kpPI, optimal_kdPI, optimal_tracking_errorPI, average_tracking_errorPI = find_optimal_results(optimal_result_arrayPI)
+    best_resultEI, optimal_kpEI, optimal_kdEI, optimal_tracking_errorEI, average_tracking_errorEI = find_optimal_results(optimal_result_arrayEI)
+    best_resultLCB, optimal_kpLCB, optimal_kdLCB, optimal_tracking_errorLCB, average_tracking_errorLCB = find_optimal_results(optimal_result_arrayLCB)
+
+    plot_best_tracking_error(all_tracking_errors_arrayEI[np.argmin(optimal_tracking_errorEI)], all_tracking_errors_arrayPI[np.argmin(optimal_tracking_errorPI)], all_tracking_errors_arrayLCB[np.argmin(optimal_tracking_errorLCB)])
+
+
+    plot_tracking_error(all_tracking_errors_arrayEI)
+    convergence_index(all_tracking_errors_arrayPI)
 
 
 if __name__ == "__main__":

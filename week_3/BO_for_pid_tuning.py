@@ -173,7 +173,7 @@ def main():
     optimal_result_array = []
     all_tracking_errors_array = []
 
-    acq_func = 'EI'
+    acq_func = 'PI'
 
     #start the times
     start = time.time()
