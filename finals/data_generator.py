@@ -15,7 +15,7 @@ def main():
     name_current_directory = "tests"
     root_dir = root_dir.replace(name_current_directory, "")
     # Initialize simulation interface
-    sim = pb.SimInterface(conf_file_name, conf_file_path_ext=root_dir)
+    sim = pb.SimInterface(conf_file_name, conf_file_path_ext=root_dir, use_gui=True)
 
     # Get active joint names from the simulation
     ext_names = sim.getNameActiveJoints()
