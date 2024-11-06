@@ -57,8 +57,7 @@ def train_model(model, train_loader, optimizer, criterion, epochs = 1000):
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
-
-        epoch_loss += loss.item()
+            epoch_loss += loss.item()
 
         train_losses.append(epoch_loss / len(train_loader))
         print(f'Epoch {epoch+1}/{epochs}, Loss: {train_losses[-1]:.6f}')
@@ -155,13 +154,54 @@ def plot_results(t, q_target, q_real, q_real_corrected):
     plt.legend()
     plt.show()
 
+def plot_results_all(t_all, q_target_all, q_real_all, q_real_corrected_all):
+    # Plot results
+    plt.figure(figsize=(12, 6))
+    for i in range(len(q_real_all)):
+        plt.plot(t_all[i], q_target_all[i], 'r-', label='Target, hidden size = ' + str((i+1)*32))
+        plt.plot(t_all[i], q_real_all[i], 'b--', label='PD Only, hidden size = ' + str((i+1)*32))
+        plt.plot(t_all[i], q_real_corrected_all[i], 'g:', label='PD + MLP Correction, hidden size = ' + str((i+1)*32))
+    plt.title('Trajectory Tracking with and without MLP Correction')
+    plt.xlabel('Time [s]')
+    plt.ylabel('Position')
+    plt.legend()
+    plt.show()
+
 def plot_loss(train_losses):
     # Plot loss
     plt.figure(figsize=(12, 6))
     plt.plot(train_losses)
+    plt.grid()
     plt.title('Training Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
+    plt.show()
+
+def plot_loss_all(train_losses_all):
+    # Plot loss
+    plt.figure(figsize=(12, 6))
+    for i in range(len(train_losses_all)):
+        plt.plot(train_losses_all[i], label='hidden size = ' + str((i+1)*32))
+    plt.grid()
+    plt.title('Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.show()
+
+def plot_prediction_accuracy(t, q_target, q_real, q_real_corrected):
+    # Calculate prediction accuracy
+    error_pd = np.abs(q_target - q_real)
+    error_corrected = np.abs(q_target - q_real_corrected)
+
+    # Plot results
+    plt.figure(figsize=(12, 6))
+    plt.plot(t, error_pd, 'b--', label='PD Only')
+    plt.plot(t, error_corrected, 'g:', label='PD + MLP Correction')
+    plt.title('Prediction Accuracy with and without MLP Correction')
+    plt.xlabel('Time [s]')
+    plt.ylabel('Position Error')
+    plt.grid()
+    plt.legend()
     plt.show()
 
 def main():
@@ -176,23 +216,41 @@ def main():
     # Generate synthetic data for trajectory tracking
     train_loader, t, q_target, dot_q_target = get_syntetic_data(m, b, k_p, k_d, dt, num_samples)
 
-    # Model, Loss, Optimizer
-    model = DeepCorrectorMLP()
-    model.set_hidden_size([32,128])
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.00001)
+    t_all = []
+    q_target_all = []
+    q_real_all = []
+    q_real_corrected_all = []
+    train_losses_all = []
 
-    # Training Loop
-    epochs = 1000
+    for i in [32, 64, 96, 128]:
+        # Model, Loss, Optimizer
+        model = DeepCorrectorMLP()       
+        # model.set_hidden_size([32,128])
+        model.set_hidden_size([i, i])
+        criterion = nn.MSELoss()
+        optimizer = optim.Adam(model.parameters(), lr=0.00001)
 
-    #train losses
-    train_losses = train_model(model, train_loader, optimizer, criterion, epochs)
-    
-    # integration with only PD Control
-    q_real, q_real_corrected = test_model(model, t, dt, q_target, dot_q_target, k_p, k_d, m, b)
+        # Training Loop
+        epochs = 1000
+
+        #train losses
+        train_losses = train_model(model, train_loader, optimizer, criterion, epochs)
+        
+        # integration with only PD Control
+        q_real, q_real_corrected = test_model(model, t, dt, q_target, dot_q_target, k_p, k_d, m, b)
+
+        t_all.append(t)
+        q_target_all.append(q_target)
+        q_real_all.append(q_real)
+        q_real_corrected_all.append(q_real_corrected)
+        train_losses_all.append(train_losses)
+
+    plot_results_all(t_all, q_target_all, q_real_all, q_real_corrected_all)
+    plot_loss_all(train_losses_all)
 
     plot_results(t, q_target, q_real, q_real_corrected)
     plot_loss(train_losses)
+    plot_prediction_accuracy(t, q_target, q_real, q_real_corrected)
     
     return 0
 
