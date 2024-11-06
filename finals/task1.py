@@ -180,8 +180,8 @@ def plot_loss(train_losses):
 def plot_loss_all(train_losses_all):
     # Plot loss
     plt.figure(figsize=(12, 6))
-    for i in range(len(train_losses_all)):
-        plt.plot(train_losses_all[i], label='hidden size = ' + str((i+1)*32))
+    for i in range(4):
+        plt.plot(train_losses_all[i],'-', label='hidden size = ' + str(1))
     plt.grid()
     plt.title('Training Loss')
     plt.xlabel('Epoch')
@@ -222,13 +222,13 @@ def main():
     q_real_corrected_all = []
     train_losses_all = []
 
-    for i in [32, 64, 96, 128]:
+    for i in [1.0, 0.01, 0.001, 0.0001, 0.00001]:
         # Model, Loss, Optimizer
         model = DeepCorrectorMLP()       
         # model.set_hidden_size([32,128])
-        model.set_hidden_size([i, i])
+        model.set_hidden_size([128,128])
         criterion = nn.MSELoss()
-        optimizer = optim.Adam(model.parameters(), lr=0.00001)
+        optimizer = optim.Adam(model.parameters(), lr=i)
 
         # Training Loop
         epochs = 1000

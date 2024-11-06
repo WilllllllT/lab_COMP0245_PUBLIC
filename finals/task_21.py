@@ -108,6 +108,8 @@ if training_flag:
         # Training parameters
         epochs = 500
         learning_rate = 0.01
+        train_losses_all = []
+        test_losses_all = []
 
         for joint_idx in range(7):
 
@@ -211,6 +213,16 @@ if training_flag:
                 plt.legend()
                 plt.grid(True)
                 plt.show()
+            
+            # Store the training and test losses for this joint
+            train_losses_all.append(train_losses)
+            test_losses_all.append(test_losses)
+        
+        # Save the training and test losses for all joints
+        np.save(os.path.join(script_dir, 'train_losses_all.npy'), train_losses_all)
+        np.save(os.path.join(script_dir, 'test_losses_all.npy'), test_losses_all)
+
+            
 
         print("Training and visualization completed.")
 

@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 import joblib  # For saving and loading models
 
 # Set the model type: "neural_network" or "random_forest"
-neural_network_or_random_forest = "random_forest"  # Change to "random_forest" to use Random Forest models
+neural_network_or_random_forest = "neural_network"  # Change to "random_forest" to use Random Forest models
 
 # MLP Model Definition
 class MLP(nn.Module):
