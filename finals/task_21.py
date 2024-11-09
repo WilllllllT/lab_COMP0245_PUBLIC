@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 
 # Set the visualization flag
-visualize = True  # Set to True to enable visualization, False to disable
+visualize = False  # Set to True to enable visualization, False to disable
 training_flag = True  # Set to True to train the models, False to skip training
 test_cartesian_accuracy_flag = True  # Set to True to test the model with a new goal position, False to skip testing
 
@@ -25,6 +25,29 @@ class JointAngleRegressor(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+def generate_random_position_in_sphere(center, min_radius, max_radius):
+    # Generate a random radius within the specified bounds
+    radius = np.random.uniform(min_radius, max_radius)
+    
+    # Generate a random point on the unit sphere by sampling spherical coordinates
+    theta = np.random.uniform(0, 2 * np.pi)    # Angle around the z-axis
+    phi = np.random.uniform(0, np.pi)           # Angle from the z-axis
+
+    # Convert spherical coordinates to Cartesian coordinates
+    x = radius * np.sin(phi) * np.cos(theta)
+    y = radius * np.sin(phi) * np.sin(theta)
+    z = radius * np.cos(phi)
+
+    # Offset by the center of the sphere
+    x += center[0]
+    y += center[1]
+    z += center[2]
+
+    if z < 0.12:
+        z = 0.12
+    
+    return x, y, z
 
 
 if training_flag:
@@ -226,6 +249,27 @@ if training_flag:
 
         print("Training and visualization completed.")
 
+#load the test and train losses
+train_losses_all = np.load(os.path.join(script_dir, 'train_losses_all.npy'))
+test_losses_all = np.load(os.path.join(script_dir, 'test_losses_all.npy'))
+
+# Visualize the training and test losses for all joints
+# if visualize:
+#     for joint_idx in range(7):
+#         train_losses = train_losses_all[joint_idx]
+#         test_losses = test_losses_all[joint_idx]
+
+#         # Plot training and test loss over epochs
+#         plt.figure(figsize=(10, 5))
+#         plt.plot(range(1, len(train_losses) + 1), train_losses, label='Training Loss')
+#         plt.plot(range(1, len(test_losses) + 1), test_losses, label='Test Loss')
+#         plt.xlabel('Epoch')
+#         plt.ylabel('Loss')
+#         plt.title(f'Loss Curve for Joint {joint_idx+1}')
+#         plt.legend()
+#         plt.grid(True)
+#         plt.show()
+
 if test_cartesian_accuracy_flag:
 
     if not training_flag:
@@ -269,18 +313,33 @@ if test_cartesian_accuracy_flag:
         models.append(model)
 
     # Generate a new goal position
-    goal_position_bounds = {
-        'x': (0.6, 0.8),
-        'y': (-0.1, 0.1),
-        'z': (0.12, 0.12)
-    }
+    # goal_position_bounds = {
+    #     'x': (0.6, 0.8),
+    #     'y': (-0.1, 0.1),
+    #     'z': (0.12, 0.12)
+    # }
     # create a set of goal positions 
+    # number_of_goal_positions_to_test = 10
+    # goal_positions = []
+    # for i in range(number_of_goal_positions_to_test):
+    #     goal_positions.append([np.random.uniform(*goal_position_bounds['x']),
+    #     np.random.uniform(*goal_position_bounds['y']),
+    #     np.random.uniform(*goal_position_bounds['z'])])
+
+    center = (0.0, 0.0, 0.2)
+    min_radius = 0.3
+    max_radius = 0.8
+
+        # Generate a random goal position within specified bounds
     number_of_goal_positions_to_test = 10
     goal_positions = []
     for i in range(number_of_goal_positions_to_test):
-        goal_positions.append([np.random.uniform(*goal_position_bounds['x']),
-        np.random.uniform(*goal_position_bounds['y']),
-        np.random.uniform(*goal_position_bounds['z'])])
+        x, y, z = generate_random_position_in_sphere(center, min_radius, max_radius)
+        goal_positions.append(np.array([
+            x, 
+            y, 
+            z
+        ]))  # Shape: (3,)
     
     # Generate test time array
     test_time_array = np.linspace(time_array.min(), time_array.max(), 100)  # For example, 100 time steps
@@ -310,6 +369,8 @@ if test_cartesian_accuracy_flag:
     init_joint_angles = sim.GetInitMotorAngles()
     init_cartesian_pos, init_R = dyn_model.ComputeFK(init_joint_angles, controlled_frame_name)
     print(f"Initial joint angles: {init_joint_angles}")
+
+    position_error_all = []
 
 
     for goal_position in goal_positions:
@@ -354,6 +415,12 @@ if test_cartesian_accuracy_flag:
         position_error = np.linalg.norm(final_cartesian_pos - goal_position)
         print(f"Position error between computed position and goal: {position_error}")
 
+        position_error_all.append(position_error)
+
+        #plot position error
+        plt.figure(figsize=(10, 5))
+        plt.plot
+
         # Optional: Visualize the cartesian trajectory over time
         if visualize:
             cartesian_positions_over_time = []
@@ -363,6 +430,18 @@ if test_cartesian_accuracy_flag:
                 cartesian_positions_over_time.append(cartesian_pos.copy())
 
             cartesian_positions_over_time = np.array(cartesian_positions_over_time)  # Shape: (num_points, 3)
+
+            position_errors = np.sqrt(((cartesian_positions_over_time[:,0] - goal_position[0])**2) + ((cartesian_positions_over_time[:,1] - goal_position[1])**2) + ((cartesian_positions_over_time[:,2] - goal_position[2])**2))
+            #plot position error
+            plt.figure(figsize=(10, 5))
+            plt.plot(test_time_array, position_errors, label='Position Error')
+            plt.xlabel('Time (s)')
+            plt.ylabel('Position Error (m)')
+            plt.title('Position Error Over Time')
+            plt.legend()
+            plt.grid(True)
+            plt.show()
+
 
             # Plot x, y, z positions over time
             plt.figure(figsize=(10, 5))
@@ -382,9 +461,20 @@ if test_cartesian_accuracy_flag:
             ax = fig.add_subplot(111, projection='3d')
             ax.plot(cartesian_positions_over_time[:, 0], cartesian_positions_over_time[:, 1], cartesian_positions_over_time[:, 2], label='Predicted Trajectory')
             ax.scatter(goal_position[0], goal_position[1], goal_position[2], color='red', label='Goal Position')
+            # add a sphere around point 0, 0, 0.2 with radius 0.8
+            u = np.linspace(0, 2 * np.pi, 100)
+            v = np.linspace(0, np.pi, 100)
+            x = 0.8 * np.outer(np.cos(u), np.sin(v))
+            y = 0.8 * np.outer(np.sin(u), np.sin(v))
+            z = 0.8 * np.outer(np.ones(np.size(u)), np.cos(v)) + 0.2
+            ax.plot_surface(x, y, z, color='r', alpha=0.1)
+            #add a point at 0, 0, 0.2 named robot
+            ax.scatter(0, 0, 0.2, color='green', label='Robot')
             ax.set_xlabel('X Position (m)')
             ax.set_ylabel('Y Position (m)')
             ax.set_zlabel('Z Position (m)')
             ax.set_title('Predicted Cartesian Trajectory')
             plt.legend()
             plt.show()
+    print(f"Average position error over {number_of_goal_positions_to_test} goal positions: {np.mean(position_error_all)}")
+        

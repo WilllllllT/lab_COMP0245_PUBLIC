@@ -6,6 +6,30 @@ import pickle  # For saving data
 import threading  # For non-blocking input
 from simulation_and_control import pb, MotorCommands, PinWrapper, feedback_lin_ctrl, CartesianDiffKin
 
+def generate_random_position_in_sphere(center, min_radius, max_radius):
+    # Generate a random radius within the specified bounds
+    radius = np.random.uniform(min_radius, max_radius)
+    
+    # Generate a random point on the unit sphere by sampling spherical coordinates
+    theta = np.random.uniform(0, 2 * np.pi)    # Angle around the z-axis
+    phi = np.random.uniform(0, np.pi)           # Angle from the z-axis
+
+    # Convert spherical coordinates to Cartesian coordinates
+    x = radius * np.sin(phi) * np.cos(theta)
+    y = radius * np.sin(phi) * np.sin(theta)
+    z = radius * np.cos(phi)
+
+    # Offset by the center of the sphere
+    x += center[0]
+    y += center[1]
+    z += center[2]
+
+    if z < 0.12:
+        z = 0.12
+    
+    return x, y, z
+
+
 
 print_cartesian_trajectory = False
 def main():
@@ -15,7 +39,7 @@ def main():
     name_current_directory = "tests"
     root_dir = root_dir.replace(name_current_directory, "")
     # Initialize simulation interface
-    sim = pb.SimInterface(conf_file_name, conf_file_path_ext=root_dir, use_gui=True)
+    sim = pb.SimInterface(conf_file_name, conf_file_path_ext=root_dir, use_gui=False)
 
     # Get active joint names from the simulation
     ext_names = sim.getNameActiveJoints()
@@ -56,14 +80,19 @@ def main():
     np.random.seed(random_seed)
 
     # Goal position bounds (example values, adjust as needed)
-    goal_position_bounds = {
-        'x': (0.6, 0.8),
-        'y': (-0.1, 0.1),
-        'z': (0.12, 0.12)
-    }
+    # goal_position_bounds = {
+    #     'x': (0.6, 0.8),
+    #     'y': (-0.1, 0.1),
+    #     'z': (0.12, 0.12)
+    # }
+
+    # Define the center and radius bounds
+    center = (0.0, 0.0, 0.2)
+    min_radius = 0.3
+    max_radius = 0.8
 
     # Trajectory parameters
-    total_trajectories = 5  # Number of trajectories to execute
+    total_trajectories = 100  # Number of trajectories to execute
     trajectory_duration = 5.0  # Duration of each trajectory in seconds
 
     # Initialize command structure for motors
@@ -73,11 +102,13 @@ def main():
     for trajectory_idx in range(total_trajectories):
         print(f"\nStarting trajectory {trajectory_idx + 1}/{total_trajectories}")
 
+        x, y, z = generate_random_position_in_sphere(center, min_radius, max_radius)
+
         # Generate a random goal position within specified bounds
         goal_position = np.array([
-            np.random.uniform(*goal_position_bounds['x']),
-            np.random.uniform(*goal_position_bounds['y']),
-            np.random.uniform(*goal_position_bounds['z'])
+            x, 
+            y, 
+            z
         ])
         print(f"Generated goal position: {goal_position}")
 
