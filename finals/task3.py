@@ -40,7 +40,7 @@ def main():
         # Extract data
         time_array = np.array(data['time'])            # Shape: (N,)
         # Optional: Normalize time data for better performance
-        # time_array = (time_array - time_array.min()) / (time_array.max() - time_array.min())
+        time_array = (time_array - time_array.min()) / (time_array.max() - time_array.min())
 
     # Load all the models in a list
     models = []
@@ -83,7 +83,7 @@ def main():
     root_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Configuration for the simulation
-    sim = pb.SimInterface(conf_file_name, conf_file_path_ext=root_dir)  # Initialize simulation interface
+    sim = pb.SimInterface(conf_file_name, conf_file_path_ext=root_dir, use_gui=False)  # Initialize simulation interface
 
     # Get active joint names from the simulation
     ext_names = sim.getNameActiveJoints()

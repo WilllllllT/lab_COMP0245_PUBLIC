@@ -284,8 +284,8 @@ if test_cartesian_accuracy_flag:
 
             # Extract data
             time_array = np.array(data['time'])            # Shape: (N,)
-            #q_mes_all = np.array(data['q_mes_all'])        # Shape: (N, 7)
-            #goal_positions = np.array(data['goal_positions'])  # Shape: (N, 3)
+            q_mes_all = np.array(data['q_mes_all'])        # Shape: (N, 7)
+            goal_positions = np.array(data['goal_positions'])  # Shape: (N, 3)
 
             # Optional: Normalize time data for better performance
             # time_array = (time_array - time_array.min()) / (time_array.max() - time_array.min())
@@ -313,33 +313,33 @@ if test_cartesian_accuracy_flag:
         models.append(model)
 
     # Generate a new goal position
-    # goal_position_bounds = {
-    #     'x': (0.6, 0.8),
-    #     'y': (-0.1, 0.1),
-    #     'z': (0.12, 0.12)
-    # }
+    goal_position_bounds = {
+        'x': (0.6, 0.8),
+        'y': (-0.1, 0.1),
+        'z': (0.12, 0.12)
+    }
     # create a set of goal positions 
-    # number_of_goal_positions_to_test = 10
-    # goal_positions = []
-    # for i in range(number_of_goal_positions_to_test):
-    #     goal_positions.append([np.random.uniform(*goal_position_bounds['x']),
-    #     np.random.uniform(*goal_position_bounds['y']),
-    #     np.random.uniform(*goal_position_bounds['z'])])
-
-    center = (0.0, 0.0, 0.2)
-    min_radius = 0.3
-    max_radius = 0.8
-
-        # Generate a random goal position within specified bounds
     number_of_goal_positions_to_test = 10
     goal_positions = []
     for i in range(number_of_goal_positions_to_test):
-        x, y, z = generate_random_position_in_sphere(center, min_radius, max_radius)
-        goal_positions.append(np.array([
-            x, 
-            y, 
-            z
-        ]))  # Shape: (3,)
+        goal_positions.append([np.random.uniform(*goal_position_bounds['x']),
+        np.random.uniform(*goal_position_bounds['y']),
+        np.random.uniform(*goal_position_bounds['z'])])
+
+    # center = (0.0, 0.0, 0.2)
+    # min_radius = 0.3
+    # max_radius = 0.8
+
+    #     # Generate a random goal position within specified bounds
+    # number_of_goal_positions_to_test = 10
+    # goal_positions = []
+    # for i in range(number_of_goal_positions_to_test):
+    #     x, y, z = generate_random_position_in_sphere(center, min_radius, max_radius)
+    #     goal_positions.append(np.array([
+    #         x, 
+    #         y, 
+    #         z
+    #     ]))  # Shape: (3,)
     
     # Generate test time array
     test_time_array = np.linspace(time_array.min(), time_array.max(), 100)  # For example, 100 time steps
