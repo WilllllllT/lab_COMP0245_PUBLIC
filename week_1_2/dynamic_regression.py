@@ -1,8 +1,10 @@
 import re
+from tkinter import font
 import numpy as np
 import time
 import os
 import matplotlib.pyplot as plt
+from pyparsing import col
 from simulation_and_control import pb, MotorCommands, PinWrapper, feedback_lin_ctrl, SinusoidalReference 
 
 def main():
@@ -79,52 +81,58 @@ def main():
         if qKey in keys and keys[qKey] and sim.GetPyBulletClient().KEY_WAS_TRIGGERED:
             break
 
+
         # TODO Compute regressor and store it
         cur_regressor = dyn_model.ComputeDynamicRegressor(q_mes, qd_mes, qdd_mes)
         # print(cur_regressor.shape)
 
         # Store regressor and measured torque
-        tau_mes_all.append(tau_mes)
-        regressor_all.append(cur_regressor) #7x70
+        tau_mes_all.append(tau_mes) # Store the measured torque value, the shape of tau_mes is 7x1
+        regressor_all.append(cur_regressor) # Store the value of regressor, the shape of regressor is 7x70
         
         current_time += time_step
         # Optional: print current time
         # print(f"Current time in seconds: {current_time:.2f}")
 
 
-    # TODO After data collection, stack all the regressor and all the torquen and compute the parameters 'a'  using pseudoinverse
-    # Stack all regressor matrices and measured torques, using np.vstack and np.hstack to match the dimensions
-    shift = 100 # Set a initial time shift for the start of the data collection (ms)
-    regressor_all = np.vstack(regressor_all[shift + 1:]) # 70000x70
-    tau_mes_all = np.hstack(tau_mes_all[shift + 1:]) # 70000x1
+    # TODO After data collection, stack all the regressor and all the torquen and compute the parameters 'a' using pseudoinverse
+
+    # Decide the initial time_step for starting to compute the following results
+    shift = 500 # Set a time shift for the data collection (ms)
+
+    # Stack all regressor matrices and measured torques, using np.vstack and np.hstack to match the dimensions for computation
+    regressor_all = np.vstack(regressor_all[shift + 1:]) # 70000x70, with the first shifted rows removed
+    tau_mes_all = np.hstack(tau_mes_all[shift + 1:]) # 70000x1, with the first shifted rows removed
 
     print (regressor_all.shape) # Check the shape of the stacked regressor matrix
-    print (tau_mes_all.shape) # Check the shape of the stacked torque matrix
+    print (tau_mes_all.shape) # Check the shape of the stacked measured torque matrix
 
-    # Compute the dynamic parameters using pseudoinverse
-    a = np.linalg.pinv(regressor_all) @ tau_mes_all # 70x1
+    # Compute the estimated parameters using pseudoinverse
+    a = np.linalg.pinv(regressor_all) @ tau_mes_all # Calculate estimated parameters with psuedoinverse, the shape of "a" should be 70x1
     print(f"Estimated parameters: {a}") 
     
+
     # TODO compute the metrics for the linear model
     # Predicted torques using the estimated parameters
     tau_pred = regressor_all @ a # 70000x1
 
     # Compute metrics
-    rss = np.sum((tau_mes_all - tau_pred) ** 2)
-    tss = np.sum((tau_mes_all - np.mean(tau_mes_all)) ** 2)
-    r2 = 1 - (rss / tss)
-    adjusted_r2 = 1 - (1 - r2) * (len(tau_mes_all) - 1) / (len(tau_mes_all) - len(a) - 1)
-    f_statistic = (tss - rss) / len(a) / (rss / (len(tau_mes_all) - len(a) - 1)) # 
+    rss = np.sum((tau_mes_all - tau_pred) ** 2) # Compute residual sum of squares
+    tss = np.sum((tau_mes_all - np.mean(tau_mes_all)) ** 2) # Compute total sum of squares
+    r2 = 1 - (rss / tss) # Compute R-squared
+    adjusted_r2 = 1 - (1 - r2) * (len(tau_mes_all) - 1) / (len(tau_mes_all) - len(a) - 1) # Compute adjusted R-squared
+    f_statistic = (tss - rss) / len(a) / (rss / (len(tau_mes_all) - len(a) - 1)) # Compute F-statistic
     
-    #confidence interval
+    # Compute confidence interval
     mse = rss / len(tau_mes_all -1) # -1 to prevent division by zero
     se = np.sqrt(abs(np.diag(mse * np.linalg.pinv(regressor_all.T @ regressor_all)))) # 70x1, use abs to prevent negative values, and mse to replace standard deviation
-    conf_interval = 1.96 * se
+    conf_interval = 1.96 * se # 70x1, 95% confidence interval
 
-    # Plot the torque prediction error for each joint in separate subplots
-    # Determine the number of rows for the two-column layout
-    noise_level = dyn_model.GetConfigurationVariable("robot_noise")[0]["joint_cov"]
+    # Get the noise level value of current settings
+    noise_level = dyn_model.GetConfigurationVariable("robot_noise")[0]["joint_cov"] #from pandaconfig.json
 
+    # Plot the estimated parameters with 95% confidence interval
+    plt.figure(figsize=(10, 6))
     plt.errorbar(np.arange(len(a)), a, yerr=1.96 * se, fmt='o', capsize=5, label='Estimated Parameters')
     plt.xlabel('Parameter Index')
     plt.ylabel('Parameter Value')
@@ -132,18 +140,17 @@ def main():
     plt.savefig(f'Estimated System Parameters with 95% of Confidence Interval (noise_level = {noise_level}).png', dpi=300)
     plt.show()
 
-    # prediction interval
-    pred_se = []
-    for i in range(len(regressor_all) // num_joints):
-        x0 = tau_mes_all[i * num_joints : (i + 1) * num_joints].reshape(-1, 1) # 7x1
-        X = regressor_all[i * num_joints : (i + 1) * num_joints] # 7x70
-        inv = np.linalg.inv(X @ X.T) #7X7
-        pred_se.append(np.sqrt(mse * (1 + x0.T @ inv @ x0))) # 1x1
-    pred_se = np.vstack(pred_se) # 10000x1
-    pred_interval = (tau_pred.reshape(-1, num_joints) - 1.96 * pred_se, tau_pred.reshape(-1, num_joints) + 1.96 * pred_se)
+    # Compute prediction interval
+    pred_se = [] # Store the standard error for each prediction
+    for i in range(len(regressor_all) // num_joints): # In the range of the number of all remaining time steps
+        x0 = tau_mes_all[i * num_joints : (i + 1) * num_joints].reshape(-1, 1) # 7x1, the measured torque
+        X = regressor_all[i * num_joints : (i + 1) * num_joints] # 7x70, the regressor
+        inv = np.linalg.inv(X @ X.T) #7X7, the multiplication of the regressor and its transpose
+        pred_se.append(np.sqrt(mse * (1 + x0.T @ inv @ x0))) # 1x1, the square root of the multiplication of mse and the sum of the multiplication of measured torque and its inverse
+    pred_se = np.vstack(pred_se) # 10000x1, stack the standard error for each prediction
+    pred_interval = (tau_pred.reshape(-1, num_joints) - 1.96 * pred_se, tau_pred.reshape(-1, num_joints) + 1.96 * pred_se) # 10000x7, the prediction interval
 
-    # pred_interval = 1.96 * np.sqrt(mse * (1 + np.diag(tau_stack.T @ np.linalg.pinv(regressor_stack.T @ regressor_stack) @ tau_stack)))
-
+    # Print all the metrics
     print(f"Adjusted R-squared: {adjusted_r2}")
     print(f"F-statistic: {f_statistic}")
     print(f"Mean squared error: {mse}")
@@ -154,44 +161,40 @@ def main():
 
     # TODO plot the torque prediction error for each joint (optional)
    
-    # Plot torque prediction error for each joint
+    # Compute the torque prediction error for each joint
     torque_error = tau_mes_all - tau_pred
 
-    # Plot the torque prediction error for each joint
-    time_steps = len(torque_error) // num_joints  # Total number of time steps
+    # Determine the number of Time steps
+    time_steps = len(torque_error) // num_joints  # Number of time steps
 
-    # #Start plotting after 100 time steps
-    x_values = np.arange(shift, time_steps + shift)  # Time steps starting from 100
-    # # x_values = np.arange(100, 100 + (time_steps - time_offset) * time_step * 1000, time_step * 1000)
-    # # x_values = np.linspace(100, 100 + (time_steps - time_offset - 1) * time_step * 1000, num=time_steps - time_offset)
-    # initial_tick = 100
-    # interval = 2000 # Define your desired interval for the x-axis ticks
-    # tick_positions = np.arange(0, x_values[-1] + interval - initial_tick, interval)
-    # tick_positions[0] = initial_tick
-    # print (tick_positions)
+    # Time steps starting from the shift
+    x_values = np.arange(shift, time_steps + shift) #  A parameter for plotting the correct shifted time steps
 
     # Reshape the torque error array to have a shape (time_steps, num_joints) for easier plotting
     torque_error_reshaped = np.reshape(torque_error, (time_steps, num_joints))
 
+    # Plot the torque prediction error for each joint in separate subplots
+    # Determine the number of rows for the two-column layout
     rows = (num_joints + 1) // 2  # Adding 1 ensures that odd numbers get an extra row
 
+    # Plot the torque prediction error for each joint in separate
     plt.figure(figsize=(13, 9))
     for joint_idx in range(num_joints):
         plt.subplot(rows, 2, joint_idx + 1)  # Use a two-column layout
         # plt.plot(torque_error_reshaped[:, joint_idx])
         plt.plot(x_values, torque_error_reshaped[:, joint_idx])
-        plt.xlabel(f'Time Steps (starting from $t_{{{100}}}$)')
+        plt.xlabel(f'Time Steps (starting from $t_{{{shift}}}$)')
         plt.ylabel(f'Joint {joint_idx + 1} Error')
         plt.title(f'Torque Prediction Error for Joint {joint_idx + 1}')
-        plt.tight_layout()
-    plt.legend()
-    plt.suptitle(f'Torque Prediction Error for Each Joint since $t_{{{100}}}$ (noise_level = {noise_level})')
+        plt.tight_layout()   
+        plt.legend(['Prediction Error'], loc = 'lower right', bbox_to_anchor=(0.5, 0.7, 0.5, 0.5), fontsize = 'small', framealpha = 0.5)
+    plt.suptitle(f'Torque Prediction Error for Each Joint since $t_{{{shift}}}$ (noise_level = {noise_level})')
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to prevent overlap
-    plt.savefig(f'Torque Prediction Error for Each Joint since $t_{{{100}}}$ (noise_level = {noise_level}).png', dpi=300)
+    plt.savefig(f'Torque Prediction Error for Each Joint since $t_{{{shift}}}$ (noise_level = {noise_level}).png', dpi=300)
     plt.show()
 
     # plot measured torque versus predicted torque versus predicion interval
-    plt.figure(figsize=(13, 9))
+    plt.figure(figsize=(13, 13))
     for joint_idx in range(num_joints):
         plt.subplot(rows, 2, joint_idx + 1)
         # plt.plot(tau_mes_all[joint_idx::num_joints], label='Measured Torque')  # Plot only the torque for the current joint
@@ -204,10 +207,12 @@ def main():
         plt.title(f'Measured Torque vs Predicted Torque for Joint {joint_idx + 1}')
         # plt.xticks(tick_positions)
         plt.tight_layout()
-    plt.legend()
-    plt.suptitle(f'Measured Torque vs Predicted Torque for Each Joint since $t_{{{100}}}$ (noise = {noise_level})')
+        # plt.legend(loc = 'lower right', bbox_to_anchor=(0.5, 0.45, 0.5, 0.3), fontsize = 'small')
+        # plt.legend(loc = 'upper left', bbox_to_anchor=(0.0, 0.7, 0.5, 0.3), fontsize = 'small')    
+        plt.legend(loc = 'lower right', bbox_to_anchor=(0.5, 0.72, 0.5, 0.3), fontsize = 'x-small', framealpha = 0.5)    
+    plt.suptitle(f'Measured Torque vs Predicted Torque for Each Joint since $t_{{{shift}}}$ (noise = {noise_level})')
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to prevent overlap
-    plt.savefig(f'Measured Torque vs Predicted Torque for Each Joint since $t_{{{100}}}$ (noise = {noise_level}).png', dpi=300)
+    plt.savefig(f'Measured Torque vs Predicted Torque for Each Joint since $t_{{{shift}}}$ (noise = {noise_level}).png', dpi=300)
     plt.show()
 
 if __name__ == '__main__':
